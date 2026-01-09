@@ -190,7 +190,38 @@
     </div>
 
     <script>
-        const allEmojis = ['🎮', '🎨', '🎭', '🎪', '🎯', '🎲', '🎸', '🎹', '🎬', '🎤', '🎧', '🎼', '🎺', '🎻', '🎰', '🎳'];
+        const allEmojis = [
+            // Games & Entertainment
+            '🎮', '🎨', '🎭', '🎪', '🎯', '🎲', '🎸', '🎹', '🎬', '🎤', '🎧', '🎼', '🎺', '🎻', '🎰', '🎳',
+            // Sports & Activities
+            '⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱', '🏓', '🏸', '🏒', '🏑', '🥊', '🥋', '⛳', '🏹',
+            // Animals
+            '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔',
+            '🦆', '🦉', '🦅', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐢', '🐍', '🦎',
+            // Marine Life
+            '🐙', '🦑', '🦀', '🦞', '🦐', '🐠', '🐟', '🐡', '🐬', '🦈', '🐳', '🐋', '🦭', '🦦',
+            // Food & Drinks
+            '🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍑', '🍒', '🍍', '🥝', '🥑', '🍅', '🥕', '🌽', '🥒',
+            '🍔', '🍕', '🌭', '🌮', '🌯', '🥙', '🍝', '🍜', '🍲', '🍱', '🍣', '🍤', '🍙', '🥟', '🍩', '🍪',
+            '🎂', '🧁', '🍰', '🍫', '🍬', '🍭', '☕', '🍵', '🥤', '🧃', '🍹', '🍺', '🍻', '🥂', '🍾', '🧉',
+            // Nature & Weather
+            '🌸', '🌺', '🌻', '🌹', '🌷', '🌼', '💐', '🌾', '🌱', '🍀', '🍃', '🍂', '🍁', '🌴', '🌲', '🌳',
+            '☀️', '⭐', '🌙', '⚡', '🔥', '💧', '🌈', '❄️', '☃️', '🌊', '💫', '✨', '🌟', '💥', '☁️', '🌤️',
+            // Objects & Tools
+            '⚽', '🏀', '⚾', '🎾', '🏐', '🏈', '🎱', '🎳', '🏏', '🏑', '🏒', '🏓', '🏸', '🥊', '🥋', '⛳',
+            '📱', '💻', '⌨️', '🖱️', '🖥️', '🖨️', '📷', '📹', '🎥', '📺', '📻', '🎙️', '🎚️', '🎛️', '⏰', '⏱️',
+            '🔑', '🔒', '🔓', '🔨', '🔧', '🔩', '⚙️', '🧰', '🪛', '🪚', '⛏️', '🪓', '🗡️', '⚔️', '🛡️', '🏹',
+            // Transportation
+            '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🚚', '🚛', '🚜', '🛵', '🏍️', '🚲',
+            '✈️', '🚁', '🚂', '🚃', '🚄', '🚅', '🚆', '🚇', '🚈', '🚉', '🚊', '🚝', '🚞', '🚋', '🚌', '🚍',
+            // Buildings & Places
+            '🏠', '🏡', '🏢', '🏣', '🏤', '🏥', '🏦', '🏨', '🏩', '🏪', '🏫', '🏬', '🏭', '🏯', '🏰', '🗼',
+            // Symbols & Icons
+            '❤️', '💛', '💚', '💙', '💜', '🧡', '🖤', '🤍', '🤎', '💔', '💕', '💖', '💗', '💘', '💝', '💞',
+            '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔶', '🔷', '🔸', '🔹', '🔺', '🔻', '💠',
+            // Space & Science
+            '🚀', '🛸', '🛰️', '🌍', '🌎', '🌏', '🪐', '🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘', '🌚'
+        ];
         let gridSize = '4x4';
         let totalPairs = 8;
         let cards = [];
@@ -216,6 +247,13 @@
             return array;
         }
 
+        function getRandomEmojis(count) {
+            // Create a shuffled copy of all emojis and take the first 'count' items
+            const shuffled = [...allEmojis];
+            shuffle(shuffled);
+            return shuffled.slice(0, count);
+        }
+
         function createBoard() {
             const config = getGridConfig(gridSize);
             totalPairs = config.pairs;
@@ -224,8 +262,8 @@
             gameBoard.innerHTML = '';
             gameBoard.className = `memory-grid grid-${gridSize}`;
 
-            // Select the required number of emojis for this grid size
-            const selectedEmojis = allEmojis.slice(0, totalPairs);
+            // Randomly select emojis from the entire array
+            const selectedEmojis = getRandomEmojis(totalPairs);
             cards = shuffle([...selectedEmojis, ...selectedEmojis]);
 
             cards.forEach((emoji, index) => {
