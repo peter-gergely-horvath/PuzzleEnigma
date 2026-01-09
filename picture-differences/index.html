@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Picture Differences - Puzzle Enigma</title>
+    <link rel="stylesheet" href="../game-style.css">
+    <style>
+        .pictures-container {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            align-items: center;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+
+        .picture-box {
+            width: 400px;
+            height: 400px;
+            background: var(--surface-color);
+            border: 3px solid var(--primary-color);
+            border-radius: 12px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 0.5rem;
+            padding: 1rem;
+        }
+
+        .picture-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .picture-box.memorize .picture-item {
+            cursor: default;
+        }
+
+        .picture-box.play .picture-item {
+            cursor: pointer;
+        }
+
+        .picture-box.play .picture-item:hover {
+            background: rgba(102, 126, 234, 0.3);
+            transform: scale(1.05);
+        }
+
+        .picture-item.different {
+            background: var(--success);
+            animation: pulse 0.5s;
+        }
+
+        .picture-item.wrong {
+            background: var(--error);
+            animation: shake 0.5s;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @media (max-width: 1024px) {
+            .picture-box {
+                width: 300px;
+                height: 300px;
+            }
+
+            .picture-item {
+                font-size: 2rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .picture-box {
+                width: 250px;
+                height: 250px;
+            }
+
+            .picture-item {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="../index.html" class="back-btn">
+                <span>←</span> Back to Games
+            </a>
+            <div class="game-title">
+                <h1>🖼️ Picture Differences</h1>
+            </div>
+            <div class="score-info">
+                <div class="score-box">
+                    <div class="score-label">Level</div>
+                    <div class="score-value" id="level">1</div>
+                </div>
+                <div class="score-box">
+                    <div class="score-label">Found</div>
+                    <div class="score-value" id="found">0/3</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>How to Play</h3>
+            <p>Study the first grid, then find the items that changed in the second grid. Click on the differences!</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" id="startBtn">Start Round</button>
+            <button class="btn btn-secondary" id="resetBtn">Reset</button>
+        </div>
+
+        <div class="game-container">
+            <div class="pictures-container">
+                <div>
+                    <h3 style="text-align: center; margin-bottom: 1rem; color: var(--text-muted);">Original</h3>
+                    <div class="picture-box memorize" id="originalGrid"></div>
+                </div>
+                <div id="modifiedContainer" style="display: none;">
+                    <h3 style="text-align: center; margin-bottom: 1rem; color: var(--text-muted);">Find the Differences</h3>
+                    <div class="picture-box play" id="modifiedGrid"></div>
+                </div>
+            </div>
+            <div id="message"></div>
+        </div>
+    </div>
+
+    <script>
+        const emojiSets = [
+            ['🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍑', '🥝', '🍍', '🥥', '🥭'],
+            ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮'],
+            ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱', '🏓', '🏸', '🥏', '🎯'],
+            ['🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🚚', '🚛']
+        ];
+
+        let originalGrid = [];
+        let modifiedGrid = [];
+        let differences = [];
+        let foundDifferences = 0;
+        let level = 1;
+        let numDifferences = 3;
+
+        function generateGrids() {
+            const emojiSet = emojiSets[Math.floor(Math.random() * emojiSets.length)];
+            const shuffled = [...emojiSet].sort(() => Math.random() - 0.5);
+            originalGrid = shuffled.slice(0, 16);
+            modifiedGrid = [...originalGrid];
+
+            // Create differences
+            differences = [];
+            const availableIndices = Array.from({length: 16}, (_, i) => i);
+
+            for (let i = 0; i < numDifferences; i++) {
+                const randomIndex = Math.floor(Math.random() * availableIndices.length);
+                const index = availableIndices[randomIndex];
+                availableIndices.splice(randomIndex, 1);
+
+                // Change to a different emoji
+                let newEmoji;
+                do {
+                    newEmoji = emojiSet[Math.floor(Math.random() * emojiSet.length)];
+                } while (newEmoji === modifiedGrid[index]);
+
+                modifiedGrid[index] = newEmoji;
+                differences.push(index);
+            }
+        }
+
+        function displayGrid(grid, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            grid.forEach((emoji, index) => {
+                const item = document.createElement('div');
+                item.className = 'picture-item';
+                item.textContent = emoji;
+                item.dataset.index = index;
+                container.appendChild(item);
+            });
+        }
+
+        async function startRound() {
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('modifiedContainer').style.display = 'none';
+            foundDifferences = 0;
+            document.getElementById('found').textContent = `0/${numDifferences}`;
+
+            generateGrids();
+            displayGrid(originalGrid, 'originalGrid');
+
+            showMessage(`Memorize this grid (${numDifferences} items will change)...`, 'success');
+
+            await new Promise(resolve => setTimeout(resolve, Math.max(3000, 5000 - level * 200)));
+
+            document.getElementById('modifiedContainer').style.display = 'block';
+            displayGrid(modifiedGrid, 'modifiedGrid');
+
+            // Add click handlers
+            const items = document.querySelectorAll('#modifiedGrid .picture-item');
+            items.forEach(item => {
+                item.addEventListener('click', () => checkDifference(parseInt(item.dataset.index), item));
+            });
+
+            showMessage('Find all the differences!', 'success');
+        }
+
+        function checkDifference(index, element) {
+            if (element.classList.contains('different') || element.classList.contains('wrong')) return;
+
+            if (differences.includes(index)) {
+                element.classList.add('different');
+                foundDifferences++;
+                document.getElementById('found').textContent = `${foundDifferences}/${numDifferences}`;
+
+                if (foundDifferences === numDifferences) {
+                    level++;
+                    document.getElementById('level').textContent = level;
+                    numDifferences = Math.min(3 + Math.floor(level / 2), 6);
+
+                    showMessage('🎉 You found all differences! Next level...', 'success');
+                    setTimeout(() => startRound(), 2500);
+                } else {
+                    showMessage(`Great! ${numDifferences - foundDifferences} more to find!`, 'success');
+                }
+            } else {
+                element.classList.add('wrong');
+                setTimeout(() => element.classList.remove('wrong'), 500);
+                showMessage('Not a difference! Keep looking...', 'error');
+            }
+        }
+
+        function resetGame() {
+            level = 1;
+            numDifferences = 3;
+            foundDifferences = 0;
+            differences = [];
+            document.getElementById('level').textContent = '1';
+            document.getElementById('found').textContent = '0/3';
+            document.getElementById('originalGrid').innerHTML = '';
+            document.getElementById('modifiedGrid').innerHTML = '';
+            document.getElementById('modifiedContainer').style.display = 'none';
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('message').textContent = '';
+        }
+
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type}`;
+        }
+
+        document.getElementById('startBtn').addEventListener('click', startRound);
+        document.getElementById('resetBtn').addEventListener('click', resetGame);
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pattern Grid - Puzzle Enigma</title>
+    <link rel="stylesheet" href="../game-style.css">
+    <style>
+        .pattern-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 80px);
+            grid-template-rows: repeat(5, 80px);
+            gap: 0.5rem;
+            margin: 2rem auto;
+            width: fit-content;
+        }
+
+        .grid-tile {
+            background: var(--surface-color);
+            border: 2px solid var(--primary-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .grid-tile:hover {
+            transform: scale(1.05);
+        }
+
+        .grid-tile.highlighted {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .grid-tile.selected {
+            background: var(--success);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.6);
+        }
+
+        .grid-tile.wrong {
+            background: var(--error);
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        @media (max-width: 768px) {
+            .pattern-grid {
+                grid-template-columns: repeat(5, 50px);
+                grid-template-rows: repeat(5, 50px);
+                gap: 0.3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="../index.html" class="back-btn">
+                <span>←</span> Back to Games
+            </a>
+            <div class="game-title">
+                <h1>⬜ Pattern Grid</h1>
+            </div>
+            <div class="score-info">
+                <div class="score-box">
+                    <div class="score-label">Level</div>
+                    <div class="score-value" id="level">1</div>
+                </div>
+                <div class="score-box">
+                    <div class="score-label">Best</div>
+                    <div class="score-value" id="best">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>How to Play</h3>
+            <p>Watch the pattern of highlighted tiles, then click to recreate the pattern from memory!</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" id="startBtn">Start Round</button>
+            <button class="btn btn-secondary" id="submitBtn" style="display: none;">Submit</button>
+            <button class="btn btn-secondary" id="clearBtn" style="display: none;">Clear</button>
+            <button class="btn btn-secondary" id="resetBtn">Reset</button>
+        </div>
+
+        <div class="game-container">
+            <div class="pattern-grid" id="grid"></div>
+            <div id="message"></div>
+        </div>
+    </div>
+
+    <script>
+        const GRID_SIZE = 5;
+        let pattern = [];
+        let selectedTiles = [];
+        let level = 1;
+        let isPlaying = false;
+        let bestScore = localStorage.getItem('patternBest') || 0;
+
+        document.getElementById('best').textContent = bestScore;
+
+        const grid = document.getElementById('grid');
+        const startBtn = document.getElementById('startBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function createGrid() {
+            grid.innerHTML = '';
+            for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
+                const tile = document.createElement('div');
+                tile.className = 'grid-tile';
+                tile.dataset.index = i;
+                tile.addEventListener('click', () => selectTile(i));
+                grid.appendChild(tile);
+            }
+        }
+
+        function generatePattern() {
+            pattern = [];
+            const numTiles = Math.min(3 + level, 15);
+            const availableIndices = Array.from({length: GRID_SIZE * GRID_SIZE}, (_, i) => i);
+
+            for (let i = 0; i < numTiles; i++) {
+                const randomIndex = Math.floor(Math.random() * availableIndices.length);
+                pattern.push(availableIndices[randomIndex]);
+                availableIndices.splice(randomIndex, 1);
+            }
+        }
+
+        async function showPattern() {
+            isPlaying = true;
+            startBtn.disabled = true;
+            submitBtn.style.display = 'none';
+            clearBtn.style.display = 'none';
+            selectedTiles = [];
+
+            generatePattern();
+
+            const displayTime = Math.max(2000, 3000 - (level * 100));
+            showMessage(`Memorize the pattern (${pattern.length} tiles)...`, 'success');
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Highlight pattern
+            pattern.forEach(index => {
+                const tile = grid.children[index];
+                tile.classList.add('highlighted');
+            });
+
+            await new Promise(resolve => setTimeout(resolve, displayTime));
+
+            // Hide pattern
+            pattern.forEach(index => {
+                const tile = grid.children[index];
+                tile.classList.remove('highlighted');
+            });
+
+            showMessage('Now recreate the pattern!', 'success');
+            submitBtn.style.display = 'inline-block';
+            clearBtn.style.display = 'inline-block';
+        }
+
+        function selectTile(index) {
+            if (!isPlaying || startBtn.disabled === false) return;
+
+            const tile = grid.children[index];
+
+            if (selectedTiles.includes(index)) {
+                selectedTiles = selectedTiles.filter(i => i !== index);
+                tile.classList.remove('selected');
+            } else {
+                selectedTiles.push(index);
+                tile.classList.add('selected');
+            }
+        }
+
+        function checkPattern() {
+            if (selectedTiles.length === 0) {
+                showMessage('Please select some tiles!', 'error');
+                return;
+            }
+
+            const correct = selectedTiles.length === pattern.length &&
+                           selectedTiles.every(index => pattern.includes(index));
+
+            if (correct) {
+                level++;
+                document.getElementById('level').textContent = level;
+
+                if (level - 1 > bestScore) {
+                    bestScore = level - 1;
+                    localStorage.setItem('patternBest', bestScore);
+                    document.getElementById('best').textContent = bestScore;
+                }
+
+                showMessage('🎉 Perfect! Get ready for the next level...', 'success');
+
+                // Show correct pattern briefly
+                selectedTiles.forEach(index => {
+                    grid.children[index].classList.remove('selected');
+                    grid.children[index].classList.add('highlighted');
+                });
+
+                setTimeout(() => {
+                    pattern.forEach(index => {
+                        grid.children[index].classList.remove('highlighted');
+                    });
+                    showPattern();
+                }, 2000);
+            } else {
+                showMessage(`❌ Wrong pattern! Starting over...`, 'error');
+
+                // Show wrong selections
+                selectedTiles.forEach(index => {
+                    if (!pattern.includes(index)) {
+                        grid.children[index].classList.add('wrong');
+                    }
+                });
+
+                // Show correct pattern
+                pattern.forEach(index => {
+                    grid.children[index].classList.add('highlighted');
+                });
+
+                setTimeout(() => {
+                    clearGrid();
+                    isPlaying = false;
+                    startBtn.disabled = false;
+                    startBtn.textContent = 'Try Again';
+                    submitBtn.style.display = 'none';
+                    clearBtn.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        function clearGrid() {
+            for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
+                const tile = grid.children[i];
+                tile.classList.remove('selected', 'highlighted', 'wrong');
+            }
+            selectedTiles = [];
+        }
+
+        function clearSelection() {
+            selectedTiles.forEach(index => {
+                grid.children[index].classList.remove('selected');
+            });
+            selectedTiles = [];
+        }
+
+        function resetGame() {
+            level = 1;
+            pattern = [];
+            selectedTiles = [];
+            isPlaying = false;
+            document.getElementById('level').textContent = '1';
+            clearGrid();
+            startBtn.disabled = false;
+            startBtn.textContent = 'Start Round';
+            submitBtn.style.display = 'none';
+            clearBtn.style.display = 'none';
+            document.getElementById('message').textContent = '';
+        }
+
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type}`;
+        }
+
+        startBtn.addEventListener('click', showPattern);
+        submitBtn.addEventListener('click', checkPattern);
+        clearBtn.addEventListener('click', clearSelection);
+        resetBtn.addEventListener('click', resetGame);
+
+        createGrid();
+    </script>
+</body>
+</html>
+

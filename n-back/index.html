@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N-Back Game - Puzzle Enigma</title>
+    <link rel="stylesheet" href="../game-style.css">
+    <style>
+        .nback-display {
+            font-size: 4rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            min-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+
+        .nback-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+
+        .nback-btn {
+            padding: 1.5rem 3rem;
+            font-size: 1.25rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .match-btn {
+            background: var(--success);
+            color: white;
+        }
+
+        .no-match-btn {
+            background: var(--error);
+            color: white;
+        }
+
+        .nback-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .nback-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+            .nback-display {
+                font-size: 3rem;
+            }
+
+            .nback-buttons {
+                flex-direction: column;
+            }
+
+            .nback-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="../index.html" class="back-btn">
+                <span>←</span> Back to Games
+            </a>
+            <div class="game-title">
+                <h1>🧠 N-Back Game</h1>
+            </div>
+            <div class="score-info">
+                <div class="score-box">
+                    <div class="score-label">N-Back</div>
+                    <div class="score-value" id="nback">2</div>
+                </div>
+                <div class="score-box">
+                    <div class="score-label">Score</div>
+                    <div class="score-value" id="score">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>How to Play</h3>
+            <p>Watch letters appear one at a time. Press "Match" if the current letter matches the one from N steps back, otherwise press "No Match". Start with 2-back!</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" id="startBtn">Start Game</button>
+            <button class="btn btn-secondary" id="levelBtn">Change N (2)</button>
+            <button class="btn btn-secondary" id="resetBtn">Reset</button>
+        </div>
+
+        <div class="game-container">
+            <div class="nback-display" id="display">Ready?</div>
+            <div class="nback-buttons" id="buttons" style="display: none;">
+                <button class="nback-btn match-btn" id="matchBtn">✓ Match</button>
+                <button class="nback-btn no-match-btn" id="noMatchBtn">✗ No Match</button>
+            </div>
+            <div id="message"></div>
+        </div>
+    </div>
+
+    <script>
+        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        let sequence = [];
+        let currentIndex = 0;
+        let nBack = 2;
+        let score = 0;
+        let isPlaying = false;
+        let roundLength = 20;
+
+        const display = document.getElementById('display');
+        const buttons = document.getElementById('buttons');
+        const matchBtn = document.getElementById('matchBtn');
+        const noMatchBtn = document.getElementById('noMatchBtn');
+        const startBtn = document.getElementById('startBtn');
+        const levelBtn = document.getElementById('levelBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function generateSequence() {
+            sequence = [];
+            for (let i = 0; i < roundLength; i++) {
+                if (i >= nBack && Math.random() < 0.3) {
+                    // 30% chance to create a match
+                    sequence.push(sequence[i - nBack]);
+                } else {
+                    sequence.push(letters[Math.floor(Math.random() * letters.length)]);
+                }
+            }
+        }
+
+        async function playRound() {
+            isPlaying = true;
+            currentIndex = 0;
+            score = 0;
+            document.getElementById('score').textContent = '0';
+            startBtn.disabled = true;
+            levelBtn.disabled = true;
+            buttons.style.display = 'flex';
+
+            generateSequence();
+            showMessage(`Watch for ${nBack}-back matches!`, 'success');
+
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            for (let i = 0; i < sequence.length && isPlaying; i++) {
+                currentIndex = i;
+                display.textContent = sequence[i];
+
+                matchBtn.disabled = false;
+                noMatchBtn.disabled = false;
+
+                await new Promise(resolve => {
+                    let answered = false;
+
+                    const handleMatch = () => {
+                        if (answered) return;
+                        answered = true;
+                        checkAnswer(true);
+                        resolve();
+                    };
+
+                    const handleNoMatch = () => {
+                        if (answered) return;
+                        answered = true;
+                        checkAnswer(false);
+                        resolve();
+                    };
+
+                    matchBtn.onclick = handleMatch;
+                    noMatchBtn.onclick = handleNoMatch;
+
+                    setTimeout(() => {
+                        if (!answered) {
+                            answered = true;
+                            checkAnswer(false); // No response = no match
+                            resolve();
+                        }
+                    }, 2000);
+                });
+
+                matchBtn.disabled = true;
+                noMatchBtn.disabled = true;
+
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+
+            endGame();
+        }
+
+        function checkAnswer(playerSaidMatch) {
+            const isActualMatch = currentIndex >= nBack &&
+                                 sequence[currentIndex] === sequence[currentIndex - nBack];
+
+            if ((playerSaidMatch && isActualMatch) || (!playerSaidMatch && !isActualMatch)) {
+                score++;
+                document.getElementById('score').textContent = score;
+            }
+        }
+
+        function endGame() {
+            isPlaying = false;
+            buttons.style.display = 'none';
+            display.textContent = '✓';
+
+            const percentage = Math.round((score / roundLength) * 100);
+            showMessage(`Game Complete! You got ${score}/${roundLength} correct (${percentage}%)`, 'success');
+
+            startBtn.disabled = false;
+            levelBtn.disabled = false;
+        }
+
+        function changeLevel() {
+            nBack++;
+            if (nBack > 5) nBack = 1;
+            document.getElementById('nback').textContent = nBack;
+            levelBtn.textContent = `Change N (${nBack})`;
+        }
+
+        function resetGame() {
+            isPlaying = false;
+            currentIndex = 0;
+            score = 0;
+            sequence = [];
+            display.textContent = 'Ready?';
+            buttons.style.display = 'none';
+            document.getElementById('score').textContent = '0';
+            document.getElementById('message').textContent = '';
+            startBtn.disabled = false;
+            levelBtn.disabled = false;
+        }
+
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type}`;
+        }
+
+        startBtn.addEventListener('click', playRound);
+        levelBtn.addEventListener('click', changeLevel);
+        resetBtn.addEventListener('click', resetGame);
+    </script>
+</body>
+</html>
+

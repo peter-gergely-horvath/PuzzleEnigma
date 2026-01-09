@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number Sequence - Puzzle Enigma</title>
+    <link rel="stylesheet" href="../game-style.css">
+    <style>
+        .sequence-display {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: 1rem;
+            margin: 2rem 0;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 1rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .number-input {
+            font-size: 2rem;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            border: 2px solid var(--primary-color);
+            background: var(--surface-color);
+            color: var(--text-color);
+            text-align: center;
+            width: 300px;
+        }
+
+        .number-input:focus {
+            outline: none;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+        }
+
+        @media (max-width: 768px) {
+            .sequence-display {
+                font-size: 2rem;
+                letter-spacing: 0.5rem;
+            }
+
+            .number-input {
+                font-size: 1.5rem;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="../index.html" class="back-btn">
+                <span>←</span> Back to Games
+            </a>
+            <div class="game-title">
+                <h1>🔢 Number Sequence</h1>
+            </div>
+            <div class="score-info">
+                <div class="score-box">
+                    <div class="score-label">Level</div>
+                    <div class="score-value" id="level">1</div>
+                </div>
+                <div class="score-box">
+                    <div class="score-label">Best</div>
+                    <div class="score-value" id="best">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>How to Play</h3>
+            <p>Memorize the number sequence shown, then type it back when prompted. Sequences get longer each level!</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" id="startBtn">Start Round</button>
+            <button class="btn btn-secondary" id="submitBtn" style="display: none;">Submit</button>
+            <button class="btn btn-secondary" id="resetBtn">Reset</button>
+        </div>
+
+        <div class="game-container">
+            <div class="sequence-display" id="sequenceDisplay">Ready?</div>
+            <div class="input-area" id="inputArea" style="display: none;">
+                <input type="text" class="number-input" id="numberInput" placeholder="Enter the sequence" autocomplete="off">
+            </div>
+            <div id="message"></div>
+        </div>
+    </div>
+
+    <script>
+        let sequence = '';
+        let level = 1;
+        let isShowing = false;
+        let bestScore = localStorage.getItem('numberBest') || 0;
+
+        document.getElementById('best').textContent = bestScore;
+
+        const sequenceDisplay = document.getElementById('sequenceDisplay');
+        const numberInput = document.getElementById('numberInput');
+        const inputArea = document.getElementById('inputArea');
+        const startBtn = document.getElementById('startBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function generateSequence(length) {
+            let seq = '';
+            for (let i = 0; i < length; i++) {
+                seq += Math.floor(Math.random() * 10);
+            }
+            return seq;
+        }
+
+        async function showSequence() {
+            isShowing = true;
+            startBtn.disabled = true;
+            inputArea.style.display = 'none';
+            submitBtn.style.display = 'none';
+            numberInput.value = '';
+
+            sequence = generateSequence(2 + level);
+
+            showMessage(`Memorize this ${2 + level}-digit number...`, 'success');
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Show sequence
+            sequenceDisplay.textContent = sequence;
+
+            const displayTime = Math.max(2000, level * 1000);
+            await new Promise(resolve => setTimeout(resolve, displayTime));
+
+            // Hide sequence
+            sequenceDisplay.textContent = '???';
+
+            // Show input
+            isShowing = false;
+            inputArea.style.display = 'flex';
+            submitBtn.style.display = 'inline-block';
+            numberInput.focus();
+            showMessage('Type the sequence you saw!', 'success');
+        }
+
+        function checkAnswer() {
+            const userInput = numberInput.value.trim();
+
+            if (userInput === '') {
+                showMessage('Please enter a number!', 'error');
+                return;
+            }
+
+            if (userInput === sequence) {
+                level++;
+                document.getElementById('level').textContent = level;
+
+                if (level - 1 > bestScore) {
+                    bestScore = level - 1;
+                    localStorage.setItem('numberBest', bestScore);
+                    document.getElementById('best').textContent = bestScore;
+                }
+
+                showMessage('🎉 Correct! Get ready for the next level...', 'success');
+                setTimeout(() => showSequence(), 2000);
+            } else {
+                showMessage(`❌ Wrong! The correct sequence was: ${sequence}`, 'error');
+                inputArea.style.display = 'none';
+                submitBtn.style.display = 'none';
+                startBtn.disabled = false;
+                startBtn.textContent = 'Try Again';
+                sequenceDisplay.textContent = 'Game Over';
+            }
+        }
+
+        function resetGame() {
+            level = 1;
+            sequence = '';
+            isShowing = false;
+            document.getElementById('level').textContent = '1';
+            sequenceDisplay.textContent = 'Ready?';
+            numberInput.value = '';
+            inputArea.style.display = 'none';
+            submitBtn.style.display = 'none';
+            startBtn.disabled = false;
+            startBtn.textContent = 'Start Round';
+            document.getElementById('message').textContent = '';
+        }
+
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type}`;
+        }
+
+        startBtn.addEventListener('click', showSequence);
+        submitBtn.addEventListener('click', checkAnswer);
+        resetBtn.addEventListener('click', resetGame);
+
+        numberInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                checkAnswer();
+            }
+        });
+
+        // Only allow numbers in input
+        numberInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/[^0-9]/g, '');
+        });
+    </script>
+</body>
+</html>
+

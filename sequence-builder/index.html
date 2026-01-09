@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sequence Builder - Puzzle Enigma</title>
+    <link rel="stylesheet" href="../game-style.css">
+    <style>
+        .sequence-area {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            align-items: center;
+            margin: 2rem 0;
+        }
+
+        .pattern-display {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            min-height: 100px;
+        }
+
+        .pattern-piece {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .builder-pieces {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 2rem;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 12px;
+        }
+
+        .builder-piece {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+        }
+
+        .builder-piece:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px currentColor;
+        }
+
+        .builder-piece.used {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .player-sequence {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            min-height: 100px;
+            padding: 1.5rem;
+            background: var(--surface-color);
+            border-radius: 12px;
+            border: 2px dashed var(--primary-color);
+        }
+
+        @media (max-width: 768px) {
+            .pattern-piece,
+            .builder-piece {
+                width: 60px;
+                height: 60px;
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="../index.html" class="back-btn">
+                <span>←</span> Back to Games
+            </a>
+            <div class="game-title">
+                <h1>🔨 Sequence Builder</h1>
+            </div>
+            <div class="score-info">
+                <div class="score-box">
+                    <div class="score-label">Level</div>
+                    <div class="score-value" id="level">1</div>
+                </div>
+                <div class="score-box">
+                    <div class="score-label">Best</div>
+                    <div class="score-value" id="best">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>How to Play</h3>
+            <p>Memorize the pattern shown, then rebuild it by clicking the shapes in the correct order!</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" id="startBtn">Start Round</button>
+            <button class="btn btn-secondary" id="checkBtn" style="display: none;">Check Answer</button>
+            <button class="btn btn-secondary" id="clearBtn" style="display: none;">Clear</button>
+            <button class="btn btn-secondary" id="resetBtn">Reset</button>
+        </div>
+
+        <div class="game-container">
+            <div class="sequence-area">
+                <div>
+                    <h3 style="text-align: center; color: var(--text-muted); margin-bottom: 1rem;">Pattern</h3>
+                    <div class="pattern-display" id="patternDisplay">Ready?</div>
+                </div>
+                <div id="builderArea" style="display: none; width: 100%;">
+                    <h3 style="text-align: center; color: var(--text-muted); margin-bottom: 1rem;">Available Pieces</h3>
+                    <div class="builder-pieces" id="builderPieces"></div>
+                    <h3 style="text-align: center; color: var(--text-muted); margin: 1.5rem 0 1rem;">Your Sequence</h3>
+                    <div class="player-sequence" id="playerSequence"></div>
+                </div>
+            </div>
+            <div id="message"></div>
+        </div>
+    </div>
+
+    <script>
+        const shapes = [
+            { emoji: '🔴', color: '#ef4444', name: 'red' },
+            { emoji: '🔵', color: '#3b82f6', name: 'blue' },
+            { emoji: '🟢', color: '#10b981', name: 'green' },
+            { emoji: '🟡', color: '#f59e0b', name: 'yellow' },
+            { emoji: '🟣', color: '#a855f7', name: 'purple' },
+            { emoji: '🟠', color: '#f97316', name: 'orange' },
+            { emoji: '⭐', color: '#fbbf24', name: 'star' },
+            { emoji: '❤️', color: '#ec4899', name: 'heart' },
+            { emoji: '💎', color: '#06b6d4', name: 'diamond' },
+            { emoji: '⬛', color: '#1f2937', name: 'square' }
+        ];
+
+        let pattern = [];
+        let playerPattern = [];
+        let level = 1;
+        let bestScore = localStorage.getItem('builderBest') || 0;
+
+        document.getElementById('best').textContent = bestScore;
+
+        const patternDisplay = document.getElementById('patternDisplay');
+        const builderArea = document.getElementById('builderArea');
+        const builderPieces = document.getElementById('builderPieces');
+        const playerSequence = document.getElementById('playerSequence');
+        const startBtn = document.getElementById('startBtn');
+        const checkBtn = document.getElementById('checkBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function generatePattern() {
+            pattern = [];
+            const length = 3 + level;
+            for (let i = 0; i < length; i++) {
+                const shape = shapes[Math.floor(Math.random() * shapes.length)];
+                pattern.push(shape);
+            }
+        }
+
+        function createBuilderPieces() {
+            builderPieces.innerHTML = '';
+
+            // Show all available shapes
+            shapes.forEach(shape => {
+                const piece = document.createElement('div');
+                piece.className = 'builder-piece';
+                piece.textContent = shape.emoji;
+                piece.style.background = shape.color;
+                piece.dataset.name = shape.name;
+                piece.addEventListener('click', () => addToSequence(shape, piece));
+                builderPieces.appendChild(piece);
+            });
+        }
+
+        async function showPattern() {
+            startBtn.disabled = true;
+            builderArea.style.display = 'none';
+            checkBtn.style.display = 'none';
+            clearBtn.style.display = 'none';
+            playerPattern = [];
+            playerSequence.innerHTML = '';
+
+            generatePattern();
+
+            showMessage(`Memorize this sequence (${pattern.length} items)...`, 'success');
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Show pattern one piece at a time
+            patternDisplay.innerHTML = '';
+            for (let i = 0; i < pattern.length; i++) {
+                const piece = document.createElement('div');
+                piece.className = 'pattern-piece';
+                piece.textContent = pattern[i].emoji;
+                piece.style.background = pattern[i].color;
+                patternDisplay.appendChild(piece);
+                await new Promise(resolve => setTimeout(resolve, 600));
+            }
+
+            const displayTime = Math.max(2000, pattern.length * 800);
+            await new Promise(resolve => setTimeout(resolve, displayTime));
+
+            // Hide pattern
+            patternDisplay.innerHTML = '<div style="color: var(--text-muted); font-size: 1.5rem; padding: 2rem;">???</div>';
+
+            // Show builder
+            builderArea.style.display = 'block';
+            checkBtn.style.display = 'inline-block';
+            clearBtn.style.display = 'inline-block';
+            createBuilderPieces();
+            showMessage('Rebuild the sequence in the correct order!', 'success');
+        }
+
+        function addToSequence(shape, pieceElement) {
+            if (playerPattern.length >= pattern.length) {
+                showMessage('Sequence complete! Click "Check Answer"', 'success');
+                return;
+            }
+
+            playerPattern.push(shape);
+
+            const piece = document.createElement('div');
+            piece.className = 'pattern-piece';
+            piece.textContent = shape.emoji;
+            piece.style.background = shape.color;
+            piece.style.cursor = 'pointer';
+            piece.addEventListener('click', () => removeFromSequence(playerPattern.length - 1));
+            playerSequence.appendChild(piece);
+        }
+
+        function removeFromSequence(index) {
+            playerPattern.splice(index);
+            renderPlayerSequence();
+        }
+
+        function renderPlayerSequence() {
+            playerSequence.innerHTML = '';
+            playerPattern.forEach((shape, index) => {
+                const piece = document.createElement('div');
+                piece.className = 'pattern-piece';
+                piece.textContent = shape.emoji;
+                piece.style.background = shape.color;
+                piece.style.cursor = 'pointer';
+                piece.addEventListener('click', () => removeFromSequence(index));
+                playerSequence.appendChild(piece);
+            });
+        }
+
+        function checkAnswer() {
+            if (playerPattern.length === 0) {
+                showMessage('Please build a sequence first!', 'error');
+                return;
+            }
+
+            const correct = playerPattern.length === pattern.length &&
+                           playerPattern.every((shape, i) => shape.name === pattern[i].name);
+
+            if (correct) {
+                level++;
+                document.getElementById('level').textContent = level;
+
+                if (level - 1 > bestScore) {
+                    bestScore = level - 1;
+                    localStorage.setItem('builderBest', bestScore);
+                    document.getElementById('best').textContent = bestScore;
+                }
+
+                showMessage('🎉 Perfect sequence! Get ready for the next level...', 'success');
+
+                // Show correct pattern again
+                patternDisplay.innerHTML = '';
+                pattern.forEach(shape => {
+                    const piece = document.createElement('div');
+                    piece.className = 'pattern-piece';
+                    piece.textContent = shape.emoji;
+                    piece.style.background = shape.color;
+                    patternDisplay.appendChild(piece);
+                });
+
+                setTimeout(() => showPattern(), 2500);
+            } else {
+                showMessage('❌ Wrong sequence! Here was the correct pattern:', 'error');
+
+                patternDisplay.innerHTML = '';
+                pattern.forEach(shape => {
+                    const piece = document.createElement('div');
+                    piece.className = 'pattern-piece';
+                    piece.textContent = shape.emoji;
+                    piece.style.background = shape.color;
+                    patternDisplay.appendChild(piece);
+                });
+
+                builderArea.style.display = 'none';
+                checkBtn.style.display = 'none';
+                clearBtn.style.display = 'none';
+                startBtn.disabled = false;
+                startBtn.textContent = 'Try Again';
+            }
+        }
+
+        function clearSequence() {
+            playerPattern = [];
+            playerSequence.innerHTML = '';
+        }
+
+        function resetGame() {
+            level = 1;
+            pattern = [];
+            playerPattern = [];
+            document.getElementById('level').textContent = '1';
+            patternDisplay.innerHTML = 'Ready?';
+            playerSequence.innerHTML = '';
+            builderArea.style.display = 'none';
+            checkBtn.style.display = 'none';
+            clearBtn.style.display = 'none';
+            startBtn.disabled = false;
+            startBtn.textContent = 'Start Round';
+            document.getElementById('message').textContent = '';
+        }
+
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type}`;
+        }
+
+        startBtn.addEventListener('click', showPattern);
+        checkBtn.addEventListener('click', checkAnswer);
+        clearBtn.addEventListener('click', clearSequence);
+        resetBtn.addEventListener('click', resetGame);
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speed Matching - Puzzle Enigma</title>
+    <link rel="stylesheet" href="../game-style.css">
+    <style>
+        .speed-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 100px);
+            gap: 0.75rem;
+            margin: 2rem auto;
+        }
+
+        .speed-card {
+            width: 100px;
+            height: 100px;
+            background: var(--surface-color);
+            border: 3px solid var(--primary-color);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .speed-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .speed-card.matched {
+            background: var(--success);
+            border-color: var(--success);
+            opacity: 0.5;
+            cursor: default;
+        }
+
+        .speed-card.selected {
+            background: var(--primary-color);
+            transform: scale(0.95);
+        }
+
+        .timer {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--warning);
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .speed-grid {
+                grid-template-columns: repeat(4, 70px);
+                gap: 0.5rem;
+            }
+
+            .speed-card {
+                width: 70px;
+                height: 70px;
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="../index.html" class="back-btn">
+                <span>←</span> Back to Games
+            </a>
+            <div class="game-title">
+                <h1>⚡ Speed Matching</h1>
+            </div>
+            <div class="score-info">
+                <div class="score-box">
+                    <div class="score-label">Matches</div>
+                    <div class="score-value" id="matches">0/8</div>
+                </div>
+                <div class="score-box">
+                    <div class="score-label">Best Time</div>
+                    <div class="score-value" id="bestTime">--</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>How to Play</h3>
+            <p>Match all pairs as fast as possible! Click two cards to flip them. The clock starts on your first click!</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" id="newGameBtn">New Game</button>
+            <button class="btn btn-secondary" id="resetBtn">Reset</button>
+        </div>
+
+        <div class="game-container">
+            <div class="timer" id="timer">00:00</div>
+            <div class="speed-grid" id="gameBoard"></div>
+            <div id="message"></div>
+        </div>
+    </div>
+
+    <script>
+        const emojis = ['⚡', '🔥', '⭐', '💎', '🎯', '🚀', '🎪', '🎨'];
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let startTime = null;
+        let timerInterval = null;
+        let gameStarted = false;
+        let bestTime = localStorage.getItem('speedBestTime') || null;
+
+        if (bestTime) {
+            document.getElementById('bestTime').textContent = formatTime(parseInt(bestTime));
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function formatTime(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const milliseconds = Math.floor((ms % 1000) / 10);
+            return `${seconds.toString().padStart(2, '0')}:${milliseconds.toString().padStart(2, '0')}`;
+        }
+
+        function startTimer() {
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                document.getElementById('timer').textContent = formatTime(elapsed);
+            }, 10);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function createBoard() {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            cards = shuffle([...emojis, ...emojis]);
+
+            cards.forEach((emoji, index) => {
+                const card = document.createElement('div');
+                card.className = 'speed-card';
+                card.textContent = emoji;
+                card.dataset.emoji = emoji;
+                card.dataset.index = index;
+                card.addEventListener('click', () => flipCard(card));
+                gameBoard.appendChild(card);
+            });
+        }
+
+        function flipCard(card) {
+            if (!gameStarted) {
+                gameStarted = true;
+                startTimer();
+            }
+
+            if (card.classList.contains('matched')) return;
+            if (card.classList.contains('selected')) return;
+            if (flippedCards.length >= 2) return;
+
+            card.classList.add('selected');
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                setTimeout(checkMatch, 400);
+            }
+        }
+
+        function checkMatch() {
+            const [card1, card2] = flippedCards;
+            const emoji1 = card1.dataset.emoji;
+            const emoji2 = card2.dataset.emoji;
+
+            if (emoji1 === emoji2) {
+                card1.classList.remove('selected');
+                card2.classList.remove('selected');
+                card1.classList.add('matched');
+                card2.classList.add('matched');
+
+                matchedPairs++;
+                document.getElementById('matches').textContent = `${matchedPairs}/8`;
+
+                if (matchedPairs === 8) {
+                    stopTimer();
+                    const finalTime = Date.now() - startTime;
+
+                    if (!bestTime || finalTime < parseInt(bestTime)) {
+                        bestTime = finalTime;
+                        localStorage.setItem('speedBestTime', bestTime);
+                        document.getElementById('bestTime').textContent = formatTime(bestTime);
+                        showMessage(`🎉 New Record! ${formatTime(finalTime)}`, 'success');
+                    } else {
+                        showMessage(`🎉 Completed in ${formatTime(finalTime)}!`, 'success');
+                    }
+                }
+            } else {
+                setTimeout(() => {
+                    card1.classList.remove('selected');
+                    card2.classList.remove('selected');
+                }, 500);
+            }
+
+            flippedCards = [];
+        }
+
+        function resetGame() {
+            stopTimer();
+            flippedCards = [];
+            matchedPairs = 0;
+            gameStarted = false;
+            startTime = null;
+            document.getElementById('timer').textContent = '00:00';
+            document.getElementById('matches').textContent = '0/8';
+            document.getElementById('message').textContent = '';
+            createBoard();
+        }
+
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type}`;
+        }
+
+        document.getElementById('newGameBtn').addEventListener('click', resetGame);
+        document.getElementById('resetBtn').addEventListener('click', resetGame);
+
+        resetGame();
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Memory - Puzzle Enigma</title>
+    <link rel="stylesheet" href="../game-style.css">
+    <style>
+        .word-display {
+            min-height: 200px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            align-items: center;
+            margin: 2rem 0;
+        }
+
+        .word-tag {
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 12px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .word-input-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .word-input {
+            font-size: 1.25rem;
+            padding: 1rem;
+            border-radius: 12px;
+            border: 2px solid var(--primary-color);
+            background: var(--surface-color);
+            color: var(--text-color);
+        }
+
+        .word-input:focus {
+            outline: none;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .recalled-words {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .recalled-word {
+            padding: 0.5rem 1rem;
+            background: var(--success);
+            color: white;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .word-tag {
+                font-size: 1.2rem;
+                padding: 0.75rem 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="../index.html" class="back-btn">
+                <span>←</span> Back to Games
+            </a>
+            <div class="game-title">
+                <h1>📝 Word Memory</h1>
+            </div>
+            <div class="score-info">
+                <div class="score-box">
+                    <div class="score-label">Level</div>
+                    <div class="score-value" id="level">1</div>
+                </div>
+                <div class="score-box">
+                    <div class="score-label">Best</div>
+                    <div class="score-value" id="best">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>How to Play</h3>
+            <p>Memorize the list of words shown, then type them back. You can enter them in any order!</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" id="startBtn">Start Round</button>
+            <button class="btn btn-secondary" id="submitBtn" style="display: none;">Finish</button>
+            <button class="btn btn-secondary" id="resetBtn">Reset</button>
+        </div>
+
+        <div class="game-container">
+            <div class="word-display" id="wordDisplay">Ready?</div>
+            <div class="word-input-container" id="inputContainer" style="display: none;">
+                <input type="text" class="word-input" id="wordInput" placeholder="Type a word and press Enter" autocomplete="off">
+                <div class="recalled-words" id="recalledWords"></div>
+            </div>
+            <div id="message"></div>
+        </div>
+            <button class="btn btn-secondary" id="resetBtn">Reset</button>
+        </div>
+    </div>
+
+    <script>
+        const wordBank = [
+            'apple', 'banana', 'orange', 'grape', 'mango', 'peach', 'cherry', 'lemon',
+            'ocean', 'mountain', 'river', 'forest', 'desert', 'valley', 'island', 'volcano',
+            'piano', 'guitar', 'violin', 'drums', 'flute', 'trumpet', 'harp', 'cello',
+            'eagle', 'dolphin', 'tiger', 'elephant', 'penguin', 'giraffe', 'zebra', 'koala',
+            'ruby', 'emerald', 'diamond', 'sapphire', 'topaz', 'pearl', 'amber', 'jade',
+            'thunder', 'lightning', 'rainbow', 'sunset', 'sunrise', 'moonlight', 'starlight', 'twilight',
+            'butterfly', 'dragonfly', 'ladybug', 'firefly', 'beetle', 'cricket', 'mantis', 'moth',
+            'castle', 'palace', 'tower', 'bridge', 'temple', 'fortress', 'mansion', 'cathedral'
+        ];
+
+        let currentWords = [];
+        let recalledWords = [];
+        let level = 1;
+        let bestScore = localStorage.getItem('wordBest') || 0;
+
+        document.getElementById('best').textContent = bestScore;
+
+        const wordDisplay = document.getElementById('wordDisplay');
+        const wordInput = document.getElementById('wordInput');
+        const inputContainer = document.getElementById('inputContainer');
+        const recalledWordsEl = document.getElementById('recalledWords');
+        const startBtn = document.getElementById('startBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function getRandomWords(count) {
+            const shuffled = [...wordBank].sort(() => Math.random() - 0.5);
+            return shuffled.slice(0, count);
+        }
+
+        async function showWords() {
+            startBtn.disabled = true;
+            inputContainer.style.display = 'none';
+            submitBtn.style.display = 'none';
+            recalledWords = [];
+            recalledWordsEl.innerHTML = '';
+            wordInput.value = '';
+
+            const wordCount = 3 + level;
+            currentWords = getRandomWords(wordCount);
+
+            showMessage(`Memorize these ${wordCount} words...`, 'success');
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            wordDisplay.innerHTML = '';
+            currentWords.forEach(word => {
+                const tag = document.createElement('div');
+                tag.className = 'word-tag';
+                tag.textContent = word;
+                wordDisplay.appendChild(tag);
+            });
+
+            const displayTime = Math.max(3000, wordCount * 1000);
+            await new Promise(resolve => setTimeout(resolve, displayTime));
+
+            wordDisplay.innerHTML = '<div style="color: var(--text-muted); font-size: 1.5rem;">Type the words you remember...</div>';
+
+            inputContainer.style.display = 'flex';
+            submitBtn.style.display = 'inline-block';
+            wordInput.focus();
+            showMessage('Type each word and press Enter!', 'success');
+        }
+
+        function addRecalledWord() {
+            const word = wordInput.value.trim().toLowerCase();
+
+            if (word === '') return;
+
+            if (recalledWords.includes(word)) {
+                showMessage('You already entered that word!', 'error');
+                wordInput.value = '';
+                return;
+            }
+
+            if (!currentWords.includes(word)) {
+                showMessage(`"${word}" was not in the list!`, 'error');
+                wordInput.value = '';
+                return;
+            }
+
+            recalledWords.push(word);
+
+            const tag = document.createElement('div');
+            tag.className = 'recalled-word';
+            tag.textContent = word;
+            recalledWordsEl.appendChild(tag);
+
+            wordInput.value = '';
+
+            if (recalledWords.length === currentWords.length) {
+                setTimeout(() => checkCompletion(), 500);
+            }
+        }
+
+        function checkCompletion() {
+            const allCorrect = currentWords.every(word => recalledWords.includes(word));
+
+            if (allCorrect) {
+                level++;
+                document.getElementById('level').textContent = level;
+
+                if (level - 1 > bestScore) {
+                    bestScore = level - 1;
+                    localStorage.setItem('wordBest', bestScore);
+                    document.getElementById('best').textContent = bestScore;
+                }
+
+                showMessage('🎉 Perfect recall! Get ready for more words...', 'success');
+                setTimeout(() => showWords(), 2500);
+            } else {
+                finishRound();
+            }
+        }
+
+        function finishRound() {
+            const correct = recalledWords.filter(word => currentWords.includes(word)).length;
+            const total = currentWords.length;
+
+            if (correct === total) {
+                level++;
+                document.getElementById('level').textContent = level;
+
+                if (level - 1 > bestScore) {
+                    bestScore = level - 1;
+                    localStorage.setItem('wordBest', bestScore);
+                    document.getElementById('best').textContent = bestScore;
+                }
+
+                showMessage(`🎉 Perfect! You got all ${total} words! Next level...`, 'success');
+                setTimeout(() => showWords(), 2500);
+            } else {
+                const missed = currentWords.filter(word => !recalledWords.includes(word));
+                showMessage(`You got ${correct}/${total} correct! Missed: ${missed.join(', ')}`, 'error');
+
+                wordDisplay.innerHTML = '';
+                currentWords.forEach(word => {
+                    const tag = document.createElement('div');
+                    tag.className = 'word-tag';
+                    tag.textContent = word;
+                    tag.style.opacity = recalledWords.includes(word) ? '1' : '0.5';
+                    wordDisplay.appendChild(tag);
+                });
+
+                inputContainer.style.display = 'none';
+                submitBtn.style.display = 'none';
+                startBtn.disabled = false;
+                startBtn.textContent = 'Try Again';
+            }
+        }
+
+        function resetGame() {
+            level = 1;
+            currentWords = [];
+            recalledWords = [];
+            document.getElementById('level').textContent = '1';
+            wordDisplay.innerHTML = 'Ready?';
+            wordInput.value = '';
+            recalledWordsEl.innerHTML = '';
+            inputContainer.style.display = 'none';
+            submitBtn.style.display = 'none';
+            startBtn.disabled = false;
+            startBtn.textContent = 'Start Round';
+            document.getElementById('message').textContent = '';
+        }
+
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type}`;
+        }
+
+        startBtn.addEventListener('click', showWords);
+        submitBtn.addEventListener('click', finishRound);
+        resetBtn.addEventListener('click', resetGame);
+
+        wordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addRecalledWord();
+            }
+        });
+    </script>
+</body>
+</html>
+
