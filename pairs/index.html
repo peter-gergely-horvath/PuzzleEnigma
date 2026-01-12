@@ -317,6 +317,10 @@
                 if (matchedPairs === totalPairs) {
                     setTimeout(() => {
                         showMessage(`🎉 Congratulations! You won in ${moves} moves!`, 'success');
+                        // Reset the game after the message disappears
+                        setTimeout(() => {
+                            resetGame();
+                        }, 3000);
                     }, 500);
                 }
             } else {

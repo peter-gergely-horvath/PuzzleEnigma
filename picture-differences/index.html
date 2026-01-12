@@ -143,10 +143,24 @@
 
     <script>
         const emojiSets = [
-            ['🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍑', '🥝', '🍍', '🥥', '🥭'],
-            ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮'],
-            ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱', '🏓', '🏸', '🥏', '🎯'],
-            ['🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🚚', '🚛']
+            ['🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍑', '🥝', '🍍', '🥥', '🥭', '🍐', '🍒', '🫐', '🥑'],
+            ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🦄'],
+            ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱', '🏓', '🏸', '🥏', '🎯', '🏑', '🏒', '🥍', '🎳'],
+            ['🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🚚', '🚛', '🚜', '🛵', '🏍️', '🚲'],
+            ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗'],
+            ['🌸', '🌺', '🌻', '🌷', '🌹', '🥀', '🌼', '🌵', '🌾', '🌿', '☘️', '🍀', '🍁', '🍂', '🍃', '🪴'],
+            ['⭐', '🌟', '✨', '💫', '🌙', '☀️', '🌤️', '⛅', '🌥️', '☁️', '🌦️', '🌧️', '⛈️', '🌩️', '🌨️', '❄️'],
+            ['🍕', '🍔', '🍟', '🌭', '🍿', '🥓', '🥚', '🧇', '🥞', '🧈', '🍞', '🥐', '🥖', '🥨', '🥯', '🧀'],
+            ['🎮', '🕹️', '🎯', '🎲', '🎰', '🎳', '🎪', '🎭', '🎨', '🎬', '🎤', '🎧', '🎼', '🎹', '🥁', '🎺'],
+            ['💎', '💍', '👑', '🔮', '🪄', '🎩', '⚡', '🔥', '💧', '🌊', '🌈', '☄️', '💥', '✨', '🎆', '🎇'],
+            ['🦋', '🐌', '🐛', '🐜', '🐝', '🪲', '🐞', '🦗', '🕷️', '🦂', '🦟', '🪰', '🪱', '🦠', '🐙', '🦑'],
+            ['🏠', '🏡', '🏢', '🏣', '🏤', '🏥', '🏦', '🏨', '🏩', '🏪', '🏫', '🏬', '🏭', '🏯', '🏰', '🗼'],
+            ['🎃', '🎄', '🎁', '🎈', '🎉', '🎊', '🎋', '🎍', '🎎', '🎏', '🎐', '🎑', '🧧', '🎀', '🎗️', '🎟️'],
+            ['⚔️', '🏹', '🛡️', '🔱', '⚓', '🪝', '🔧', '🔨', '⚒️', '🛠️', '⛏️', '🪛', '🔩', '⚙️', '🪚', '🔪'],
+            ['📱', '💻', '⌨️', '🖥️', '🖨️', '🖱️', '🖲️', '📀', '💾', '💿', '📼', '📷', '📹', '🎥', '📞', '☎️'],
+            ['🍰', '🎂', '🧁', '🥧', '🍦', '🍧', '🍨', '🍩', '🍪', '🎂', '🍮', '🍭', '🍬', '🍫', '🍿', '🧃'],
+            ['🌍', '🌎', '🌏', '🗺️', '🧭', '⛰️', '🏔️', '🌋', '🗻', '🏕️', '🏖️', '🏜️', '🏝️', '🏞️', '🏟️', '🛤️'],
+            ['🐠', '🐟', '🐡', '🦈', '🐙', '🐚', '🦀', '🦞', '🦐', '🐳', '🐋', '🐬', '🦭', '🐊', '🐢', '🦎']
         ];
 
         let originalGrid = [];
@@ -204,6 +218,9 @@
             generateGrids();
             displayGrid(originalGrid, 'originalGrid');
 
+            // Remove the startup click handler
+            document.getElementById('originalGrid').removeEventListener('click', handleStartupClick);
+
             showMessage(`Memorize this grid (${numDifferences} items will change)...`, 'success');
 
             await new Promise(resolve => setTimeout(resolve, Math.max(3000, 5000 - level * 200)));
@@ -211,20 +228,37 @@
             document.getElementById('modifiedContainer').style.display = 'block';
             displayGrid(modifiedGrid, 'modifiedGrid');
 
-            // Add click handlers
-            const items = document.querySelectorAll('#modifiedGrid .picture-item');
-            items.forEach(item => {
+            // Add click handlers to both grids
+            const modifiedItems = document.querySelectorAll('#modifiedGrid .picture-item');
+            modifiedItems.forEach(item => {
                 item.addEventListener('click', () => checkDifference(parseInt(item.dataset.index), item));
             });
+
+            const originalItems = document.querySelectorAll('#originalGrid .picture-item');
+            originalItems.forEach(item => {
+                item.addEventListener('click', () => checkDifference(parseInt(item.dataset.index), item));
+            });
+
+            // Make original grid clickable
+            document.getElementById('originalGrid').classList.remove('memorize');
+            document.getElementById('originalGrid').classList.add('play');
 
             showMessage('Find all the differences!', 'success');
         }
 
         function checkDifference(index, element) {
-            if (element.classList.contains('different') || element.classList.contains('wrong')) return;
+            // Check if this difference was already found
+            const originalItem = document.querySelector(`#originalGrid .picture-item[data-index="${index}"]`);
+            const modifiedItem = document.querySelector(`#modifiedGrid .picture-item[data-index="${index}"]`);
+
+            if (originalItem?.classList.contains('different') || modifiedItem?.classList.contains('different')) return;
+            if (element.classList.contains('wrong')) return;
 
             if (differences.includes(index)) {
-                element.classList.add('different');
+                // Highlight in both grids
+                if (originalItem) originalItem.classList.add('different');
+                if (modifiedItem) modifiedItem.classList.add('different');
+
                 foundDifferences++;
                 document.getElementById('found').textContent = `${foundDifferences}/${numDifferences}`;
 
@@ -257,6 +291,12 @@
             document.getElementById('modifiedContainer').style.display = 'none';
             document.getElementById('startBtn').disabled = false;
             document.getElementById('message').textContent = '';
+
+            // Re-add startup click handler
+            document.getElementById('originalGrid').addEventListener('click', handleStartupClick);
+            document.getElementById('originalGrid').style.cursor = 'pointer';
+            document.getElementById('originalGrid').classList.remove('play');
+            document.getElementById('originalGrid').classList.add('memorize');
         }
 
         function showMessage(text, type) {
@@ -265,8 +305,16 @@
             messageEl.className = `message ${type}`;
         }
 
+        function handleStartupClick() {
+            startRound();
+        }
+
         document.getElementById('startBtn').addEventListener('click', startRound);
         document.getElementById('resetBtn').addEventListener('click', resetGame);
+
+        // Add click handler to empty grid to start the game
+        document.getElementById('originalGrid').addEventListener('click', handleStartupClick);
+        document.getElementById('originalGrid').style.cursor = 'pointer';
     </script>
 </body>
 </html>
